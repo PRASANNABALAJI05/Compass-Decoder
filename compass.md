@@ -4,7 +4,7 @@ A simple **Verilog module** designed to decode digital compass directions based 
 
 ---
 
-## Overview#
+## Overview
 
 The `compassdecoder` module takes signed 2-axis magnetometer data (`x`, `y`) and activates a corresponding set of directional LEDs (8 total outputs, 2 per main direction).
 
