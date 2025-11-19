@@ -55,6 +55,91 @@ The 8-bit output (`direction_led`) is mapped as follows (using two adjacent bits
 > **Note:** The order of bits in the 8-bit output is typically mapped: `N1, N2, E1, E2, S1, S2, W1, W2`.
 
 ---
+## Verilog HDL Code
+```
+// CompassDisplay.v
+module compassdecoder(
+    input signed [15:0] x,    // Raw sensor X-axis input
+    input signed [15:0] y,    // Raw sensor Y-axis input
+    output reg [7:0] direction_led // LEDs for N, E, S, W (2 LEDs each)
+);
+
+// Internal heading representation 0-359 degrees
+reg [8:0] heading; 
+
+// Simple heading calculation (approximate arctan2)
+always @(*) begin
+    if (x == 0 && y == 0) 
+        heading = 0; // No valid direction
+    else if (x == 0)
+        heading = (y > 0) ? 90 : 270;
+    else begin
+        if (x > 0 && y >= 0)
+            heading = (y * 90) / x; // 0 to 90 degrees
+        else if (x <= 0 && y > 0)
+            heading = 180 - ((y * 90) / (-x)); // 90 to 180 degrees
+        else if (x < 0 && y <= 0)
+            heading = 180 + ((-y * 90) / (-x)); // 180 to 270 degrees
+        else if (x >= 0 && y < 0)
+            heading = 360 - (((-y) * 90) / x); // 270 to 360 degrees
+        else
+            heading = 0;
+    end
+end
+
+// Direction decode based on heading angle
+always @(*) begin
+    case (1)
+        (heading < 45 || heading >= 315): direction_led = 8'b11000000; // North (2 LEDs)
+        (heading >= 45 && heading < 135): direction_led = 8'b00110000; // East  (2 LEDs)
+        (heading >= 135 && heading < 225): direction_led = 8'b00001100; // South (2 LEDs)
+        (heading >= 225 && heading < 315): direction_led = 8'b00000011; // West  (2 LEDs)
+        default: direction_led = 8'b00000000; // Undefined
+    endcase
+end
+
+endmodule
+
+// Testbench for CompassDisplay
+module compassdecoder_tb;
+
+reg signed [15:0] x_tb;
+reg signed [15:0] y_tb;
+wire [7:0] direction_led_tb;
+
+compassdecoder uut (
+    .x(x_tb),
+    .y(y_tb),
+    .direction_led(direction_led_tb)
+);
+
+initial begin
+    $monitor("Time=%0t | x=%0d | y=%0d | direction_led=%b", $time, x_tb, y_tb, direction_led_tb);
+    
+    // Test pattern generation
+    x_tb = 0; y_tb = 0; #10;       // Undefined
+    x_tb = 100; y_tb = 0; #10;     // East
+    x_tb = 0; y_tb = 100; #10;     // North
+    x_tb = -100; y_tb = 0; #10;    // West
+    x_tb = 0; y_tb = -100; #10;    // South
+
+    // Random test values
+    repeat (10) begin
+        x_tb = $random % 200 - 100; // -100 to 99
+        y_tb = $random % 200 - 100;
+        #10;
+    end
+
+    $finish;
+end
+
+endmodule
+
+```
+# Output
+
+<img width="1915" height="1079" alt="PROJECT OP" src="https://github.com/user-attachments/assets/e0b337e6-41df-4ff2-9ac2-bfd33beb6074" />
+
 
 ##  How to Extend
 
